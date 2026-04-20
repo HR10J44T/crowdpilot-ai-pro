@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">CrowdPilot <span>AI</span></div>
+    <nav class="nav">
+      {% for key, label in pages.items() %}
+      <a href="/{{ '' if key == 'dashboard' else key }}" class="nav-item {% if page == key %}active{% endif %}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+    <div class="promo-card">
+      <p class="eyebrow">Live Event Intelligence</p>
+      <h3>Optimize flow in real time</h3>
+      <p>Made for sporting venues with simple deploys on Cloud Run.</p>
+    </div>
+  </aside>
+
+  <main class="content">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Smart Venue Operations</p>
+        <h1>{{ pages[page] }}</h1>
+      </div>
+      <div class="topbar-actions">
+        <button id="simulate-btn" class="ghost-btn">Refresh Live Data</button>
+        <div class="pill">Finals Night · Stadium A</div>
+      </div>
+    </header>
+
+    {% if alerts and alerts[0].active %}
+    <section class="alert-banner severity-{{ alerts[0].severity }}">
+      <strong>{{ alerts[0].title }}</strong>
+      <span>{{ alerts[0].message }}</span>
+    </section>
+    {% endif %}
+
+    {% if page == 'dashboard' %}
+    <section class="stats-grid">
+      <div class="stat-card primary"><p>Total Attendees</p><h2>{{ kpis.total_attendees }}</h2><span>Across all tracked zones</span></div>
+      <div class="stat-card"><p>Avg Gate Wait</p><h2>{{ kpis.avg_wait }} min</h2><span>Live recommendation engine</span></div>
+      <div class="stat-card"><p>High Risk Zones</p><h2>{{ kpis.high_risk }}</h2><span>Needs operator attention</span></div>
+      <div class="stat-card"><p>Active Alerts</p><h2>{{ kpis.active_alerts }}</h2><span>Broadcast ready</span></div>
+    </section>
+
+    <section class="dashboard-grid">
+      <div class="card hero-card">
+        <div class="card-header"><h3>Best Entry Recommendation</h3><span class="badge success">Recommended</span></div>
+        <div class="hero-wrap">
+          <div>
+            <h2>{{ recommended_gate.name }}</h2>
+            <p class="muted">Accessible route available · {{ recommended_gate.crowd_level|title }} crowd</p>
+            <div class="chips">
+              <span class="chip">Wait {{ recommended_gate.wait_time }} min</span>
+              <span class="chip">Score {{ recommended_gate.recommendation_score }}</span>
+            </div>
+          </div>
+          <div class="progress-ring">
+            <div>{{ 100 - (recommended_gate.wait_time * 4) }}%</div>
+            <span>Flow score</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>AI Ops Summary</h3><span class="badge">Gemini-ready</span></div>
+        <p class="summary">{{ ai.summary }}</p>
+        <div class="metrics-inline">
+          <div><strong>{{ ai.confidence }}</strong><span>Confidence</span></div>
+          <div><strong>{{ ai.recommended_food }}</strong><span>Fastest Food</span></div>
+        </div>
+      </div>
+
+      <div class="card wide">
+        <div class="card-header"><h3>Zone Risk Overview</h3><span class="badge">Live</span></div>
+        <div class="zone-grid compact">
+          {% for zone in zones %}
+          <div class="zone-card risk-{{ zone.risk_level }}">
+            <div class="zone-top"><h4>{{ zone.name }}</h4><span>{{ zone.risk_level|title }}</span></div>
+            <div class="zone-body"><strong>{{ zone.crowd_count }}</strong><small>{{ zone.trend|title }}</small></div>
+            <div class="bar"><span style="width: {{ zone.occupancy_pct }}%"></span></div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card wide">
+        <div class="card-header"><h3>Queue Snapshot</h3><span class="badge success">Shortest: {{ recommended_food.name }}</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Facility</th><th>Type</th><th>Zone</th><th>Wait</th><th>Trend</th></tr></thead>
+            <tbody>
+              {% for f in facilities %}
+              <tr>
+                <td>{{ f.name }}</td><td>{{ f.type|title }}</td><td>{{ f.zone_id|upper }}</td><td>{{ f.wait_time }} min</td><td>{{ f.trend|title }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    {% elif page == 'gates' %}
+    <section class="grid-3">
+      {% for gate in gates %}
+      <article class="card gate-card {% if gate.gate_id == recommended_gate.gate_id %}recommended{% endif %}">
+        <div class="card-header"><h3>{{ gate.name }}</h3>{% if gate.gate_id == recommended_gate.gate_id %}<span class="badge success">Best Option</span>{% endif %}</div>
+        <p class="muted">{{ gate.crowd_level|title }} crowd · {{ 'Accessible' if gate.accessible else 'Standard' }}</p>
+        <div class="stat-pair"><strong>{{ gate.wait_time }} min</strong><span>Estimated wait</span></div>
+        <div class="bar"><span style="width: {{ gate.recommendation_score * 100 }}%"></span></div>
+      </article>
+      {% endfor %}
+    </section>
+    {% elif page == 'queues' %}
+    <section class="grid-3">
+      {% for f in facilities %}
+      <article class="card {% if f.facility_id == recommended_food.facility_id %}recommended{% endif %}">
+        <div class="card-header"><h3>{{ f.name }}</h3>{% if f.facility_id == recommended_food.facility_id %}<span class="badge success">Fastest</span>{% endif %}</div>
+        <p class="muted">{{ f.type|title }} · {{ f.zone_id|upper }}</p>
+        <div class="stat-pair"><strong>{{ f.wait_time }} min</strong><span>{{ f.trend|title }}</span></div>
+      </article>
+      {% endfor %}
+    </section>
+    {% elif page == 'zones' %}
+    <section class="zone-grid">
+      {% for zone in zones %}
+      <article class="zone-card large risk-{{ zone.risk_level }}">
+        <div class="zone-top"><h3>{{ zone.name }}</h3><span>{{ zone.risk_level|title }}</span></div>
+        <div class="zone-body"><strong>{{ zone.crowd_count }}</strong><small>People in zone</small></div>
+        <div class="bar"><span style="width: {{ zone.occupancy_pct }}%"></span></div>
+        <p class="muted">Trend: {{ zone.trend|title }}</p>
+      </article>
+      {% endfor %}
+    </section>
+    {% elif page == 'alerts' %}
+    <section class="dashboard-grid two-col">
+      <div class="card">
+        <div class="card-header"><h3>Create Alert</h3><span class="badge">Operator</span></div>
+        <form id="alert-form" class="form-grid">
+          <input name="title" placeholder="Title" required>
+          <select name="severity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
+          <textarea name="message" placeholder="Message" required></textarea>
+          <button class="primary-btn" type="submit">Broadcast Alert</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Active Alerts</h3><span class="badge success">{{ alerts|length }}</span></div>
+        <div id="alert-list" class="stack">
+          {% for a in alerts %}
+          <div class="alert-item severity-{{ a.severity }}"><strong>{{ a.title }}</strong><p>{{ a.message }}</p></div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    {% elif page == 'insights' %}
+    <section class="dashboard-grid two-col">
+      <div class="card">
+        <div class="card-header"><h3>AI Narrative</h3><span class="badge">Confidence {{ ai.confidence }}</span></div>
+        <p class="summary">{{ ai.summary }}</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Recommended Actions</h3><span class="badge success">Live</span></div>
+        <ul class="action-list">
+          <li>Promote <strong>{{ recommended_gate.name }}</strong> as preferred entry path.</li>
+          <li>Redirect food demand toward <strong>{{ recommended_food.name }}</strong>.</li>
+          <li>Assign staff support to high-risk zones for crowd smoothing.</li>
+        </ul>
+      </div>
+    </section>
+    {% else %}
+    <section class="dashboard-grid two-col">
+      <div class="card">
+        <div class="card-header"><h3>Accessibility</h3><span class="badge">User prefs</span></div>
+        <div class="settings-list">
+          <label><input type="checkbox" checked> High contrast mode</label>
+          <label><input type="checkbox"> Large text mode</label>
+          <label><input type="checkbox" checked> Step-free route preference</label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Deployment Notes</h3><span class="badge success">Cloud Run</span></div>
+        <p class="summary">Single-service FastAPI app with server-rendered multi-page UI for easy deployment and fewer GCP integration errors.</p>
+      </div>
+    </section>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}
